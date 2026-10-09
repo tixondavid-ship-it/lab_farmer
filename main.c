@@ -1,10 +1,11 @@
 #include <stdio.h>
+#define inventory_size 10
 
 int main(void) {
     int current_day = 1;
     int current_hour = 8;
 
-    int inventory[10] = { 3, 1, 2, 4, 3, 5, 1, 6, 0, 1 };
+    int inventory[inventory_size] = { 3, 1, 2, 4, 3, 5, 1, 6, 0, 1 };
 
     int action;
 
@@ -81,7 +82,7 @@ int main(void) {
                     printf("(Хлеб)");
                     break;
                 case 5:
-                    printf("(Шмаль)");
+                    printf("(Уголь)");
                     break;
                 case 6:
                     printf("(Саженец)");
@@ -90,7 +91,7 @@ int main(void) {
                     printf("(Удобрение)");
                     break;
                 case 8:
-                    printf("(Железо)");
+                    printf("(Ткань)");
                     break;
                 case 9:
                     printf("(Факел)");
@@ -104,24 +105,80 @@ int main(void) {
 
             break;
 
-        case 4:
-            printf("Потом\n");
+        case 4: {
+            int slot;
+            int item_id;
+
+            printf("Введите индекс слота от 0 до 9: ");
+            scanf("%d", &slot);
+
+            if (slot < 0 || slot >= inventory_size) {
+                printf("Такого слота не существует.\n");
+                break;
+            }
+
+            printf("Введите ID предмета: ");
+            scanf("%d", &item_id);
+
+            if (item_id < 0 || item_id > 9) {
+                printf("ID от 0 до 9.\n");
+                break;
+            }
+
+            inventory[slot] = item_id;
+
+            printf("Предмет помещён в слот %d.\n", slot);
+        }
+              break;
+
+        case 5: {
+            int slot;
+
+            printf("Введите номер слота от 0 до 9: ");
+            scanf("%d", &slot);
+
+            if (slot < 0 || slot >= inventory_size) {
+                printf("Такого слота не существует.\n");
+                break;
+            }
+
+            inventory[slot] = 0;
+
+            printf("Слот %d очищен.\n", slot);
             break;
 
-        case 5:
-            printf("Потом\n");
-            break;
+        case 6: {
+            int searched_id;
+            int count = 0;
 
-        case 6:
-            printf("Потом\n");
-            break;
+            printf("Введите ID предмета для поиска: ");
+            scanf("%d", &searched_id);
 
+            printf("Позиции предмета: ");
+
+            for (int i = 0; i < inventory_size; i++) {
+                if (inventory[i] == searched_id) {
+                    printf("%d ", i);
+                    count++;
+                }
+            }
+
+            printf("\nКоличество предметов с ID %d: %d\n",
+                searched_id,
+                count);
+
+            if (count == 0) {
+                printf("Такой предмет не найден.\n");
+            }
+        }
+              break;
+        }
         default:
             printf("Потом\n");
             break;
         }
 
-    } while (action != 0);
+        } while (action != 0);
 
-    return 0;
-}
+        return 0;
+    }
