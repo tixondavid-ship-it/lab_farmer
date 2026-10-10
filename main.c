@@ -174,7 +174,7 @@ int main(void) {
               break;
         }
         default:
-            printf("Потом\n");
+            printf("Ошибка ввода\n");
             break;
         }
 
