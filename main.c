@@ -1,4 +1,4 @@
-#include <stdio.h>
+п»ї#include <stdio.h>
 #include <locale.h>
 #define inventory_size 10
 
@@ -13,26 +13,26 @@ int main(void) {
     int action;
 
     do {
-        printf("\n===== МЕНЮ =====\n");
-        printf("[0] Выход\n");
-        printf("[1] Посмотреть на часы\n");
-        printf("[2] Промотать время (поработать)\n");
-        printf("[3] Посмотреть инвентарь\n");
-        printf("[4] Положить предмет в слот\n");
-        printf("[5] Выбросить предмет\n");
-        printf("[6] Ревизия ресурсов\n");
-        printf("Выберите пункт: ");
+        printf("\n===== РњР•РќР® =====\n");
+        printf("[0] Р’С‹С…РѕРґ\n");
+        printf("[1] РџРѕСЃРјРѕС‚СЂРµС‚СЊ РЅР° С‡Р°СЃС‹\n");
+        printf("[2] РџСЂРѕРјРѕС‚Р°С‚СЊ РІСЂРµРјСЏ (РїРѕСЂР°Р±РѕС‚Р°С‚СЊ)\n");
+        printf("[3] РџРѕСЃРјРѕС‚СЂРµС‚СЊ РёРЅРІРµРЅС‚Р°СЂСЊ\n");
+        printf("[4] РџРѕР»РѕР¶РёС‚СЊ РїСЂРµРґРјРµС‚ РІ СЃР»РѕС‚\n");
+        printf("[5] Р’С‹Р±СЂРѕСЃРёС‚СЊ РїСЂРµРґРјРµС‚\n");
+        printf("[6] Р РµРІРёР·РёСЏ СЂРµСЃСѓСЂСЃРѕРІ\n");
+        printf("Р’С‹Р±РµСЂРёС‚Рµ РїСѓРЅРєС‚: ");
 
         scanf("%d", &action);
 
         switch (action) {
         case 0:
-            printf("Пока-пока!\n");
+            printf("РџРѕРєР°-РїРѕРєР°!\n");
             break;
 
         case 1:
             printf(
-                "Текущее время: %d день, %02d:00\n",
+                "РўРµРєСѓС‰РµРµ РІСЂРµРјСЏ: %d РґРµРЅСЊ, %02d:00\n",
                 current_day,
                 current_hour
             );
@@ -41,11 +41,11 @@ int main(void) {
         case 2: {
             int hours;
 
-            printf("Сколько часов работать? ");
+            printf("РЎРєРѕР»СЊРєРѕ С‡Р°СЃРѕРІ СЂР°Р±РѕС‚Р°С‚СЊ? ");
             scanf("%d", &hours);
 
             if (hours < 0) {
-                printf("Нельзя.\n");
+                printf("РќРµР»СЊР·СЏ.\n");
                 break;
             }
 
@@ -55,7 +55,7 @@ int main(void) {
             current_hour %= 24;
 
             printf(
-                "Текущее время: день %d, %02d:00\n",
+                "РўРµРєСѓС‰РµРµ РІСЂРµРјСЏ: РґРµРЅСЊ %d, %02d:00\n",
                 current_day,
                 current_hour
             );
@@ -63,44 +63,44 @@ int main(void) {
         }
 
         case 3:
-            printf("\n===== ИНВЕНТАРЬ =====\n");
+            printf("\n===== РРќР’Р•РќРўРђР Р¬ =====\n");
 
             for (int i = 0; i < 10; i++) {
-                printf("Слот %d: [%d] ", i, inventory[i]);
+                printf("РЎР»РѕС‚ %d: [%d] ", i, inventory[i]);
 
                 switch (inventory[i]) {
                 case 0:
-                    printf("(Пусто)");
+                    printf("(РџСѓСЃС‚Рѕ)");
                     break;
                 case 1:
-                    printf("(Дерево)");
+                    printf("(Р”РµСЂРµРІРѕ)");
                     break;
                 case 2:
-                    printf("(Камень)");
+                    printf("(РљР°РјРµРЅСЊ)");
                     break;
                 case 3:
-                    printf("(Семена)");
+                    printf("(РЎРµРјРµРЅР°)");
                     break;
                 case 4:
-                    printf("(Хлеб)");
+                    printf("(РҐР»РµР±)");
                     break;
                 case 5:
-                    printf("(Уголь)");
+                    printf("(РЈРіРѕР»СЊ)");
                     break;
                 case 6:
-                    printf("(Саженец)");
+                    printf("(РЎР°Р¶РµРЅРµС†)");
                     break;
                 case 7:
-                    printf("(Удобрение)");
+                    printf("(РЈРґРѕР±СЂРµРЅРёРµ)");
                     break;
                 case 8:
-                    printf("(Ткань)");
+                    printf("(РўРєР°РЅСЊ)");
                     break;
                 case 9:
-                    printf("(Факел)");
+                    printf("(Р¤Р°РєРµР»)");
                     break;
                 default:
-                    printf("(Неизвестный предмет)");
+                    printf("(РќРµРёР·РІРµСЃС‚РЅС‹Р№ РїСЂРµРґРјРµС‚)");
                 }
 
                 printf("\n");
@@ -112,52 +112,52 @@ int main(void) {
             int slot;
             int item_id;
 
-            printf("Введите индекс слота от 0 до 9: ");
+            printf("Р’РІРµРґРёС‚Рµ РёРЅРґРµРєСЃ СЃР»РѕС‚Р° РѕС‚ 0 РґРѕ 9: ");
             scanf("%d", &slot);
 
             if (slot < 0 || slot >= inventory_size) {
-                printf("Такого слота не существует.\n");
+                printf("РўР°РєРѕРіРѕ СЃР»РѕС‚Р° РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.\n");
                 break;
             }
 
-            printf("Введите ID предмета: ");
+            printf("Р’РІРµРґРёС‚Рµ ID РїСЂРµРґРјРµС‚Р°: ");
             scanf("%d", &item_id);
 
             if (item_id < 0 || item_id > 9) {
-                printf("ID от 0 до 9.\n");
+                printf("ID РѕС‚ 0 РґРѕ 9.\n");
                 break;
             }
 
             inventory[slot] = item_id;
 
-            printf("Предмет помещён в слот %d.\n", slot);
+            printf("РџСЂРµРґРјРµС‚ РїРѕРјРµС‰С‘РЅ РІ СЃР»РѕС‚ %d.\n", slot);
         }
               break;
 
         case 5: {
             int slot;
 
-            printf("Введите номер слота от 0 до 9: ");
+            printf("Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ СЃР»РѕС‚Р° РѕС‚ 0 РґРѕ 9: ");
             scanf("%d", &slot);
 
             if (slot < 0 || slot >= inventory_size) {
-                printf("Такого слота не существует.\n");
+                printf("РўР°РєРѕРіРѕ СЃР»РѕС‚Р° РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚.\n");
                 break;
             }
 
             inventory[slot] = 0;
 
-            printf("Слот %d очищен.\n", slot);
+            printf("РЎР»РѕС‚ %d РѕС‡РёС‰РµРЅ.\n", slot);
             break;
 
         case 6: {
             int searched_id;
             int count = 0;
 
-            printf("Введите ID предмета для поиска: ");
+            printf("Р’РІРµРґРёС‚Рµ ID РїСЂРµРґРјРµС‚Р° РґР»СЏ РїРѕРёСЃРєР°: ");
             scanf("%d", &searched_id);
 
-            printf("Позиции предмета: ");
+            printf("РџРѕР·РёС†РёРё РїСЂРµРґРјРµС‚Р°: ");
 
             for (int i = 0; i < inventory_size; i++) {
                 if (inventory[i] == searched_id) {
@@ -166,18 +166,18 @@ int main(void) {
                 }
             }
 
-            printf("\nКоличество предметов с ID %d: %d\n",
+            printf("\nРљРѕР»РёС‡РµСЃС‚РІРѕ РїСЂРµРґРјРµС‚РѕРІ СЃ ID %d: %d\n",
                 searched_id,
                 count);
 
             if (count == 0) {
-                printf("Такой предмет не найден.\n");
+                printf("РўР°РєРѕР№ РїСЂРµРґРјРµС‚ РЅРµ РЅР°Р№РґРµРЅ.\n");
             }
         }
               break;
         }
         default:
-            printf("Ошибка ввода\n");
+            printf("РћС€РёР±РєР° РІРІРѕРґР°\n");
             break;
         }
 
