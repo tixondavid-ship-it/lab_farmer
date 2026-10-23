@@ -1,5 +1,5 @@
 *.vcxproj*
-
+*.vcxproj.user
 # Prerequisites
 *.d
 
