@@ -1,8 +1,9 @@
-﻿#include <stdio.h>
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <windows.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <locale.h>
 
 #define INVENTORY_SIZE 10
 #define MAX_ITEMS 10
@@ -63,7 +64,8 @@ void summarize_deliveries(void);
 
 int main(void) {
     
-    setlocale(LC_ALL, "");
+    
+    SetConsoleOutputCP(CP_UTF8);
 
     char farmer_name[MAX_FARMER_NAME_LEN];
     char item_names[MAX_ITEMS][MAX_NAME_LEN];
@@ -157,34 +159,45 @@ int read_int(const char* prompt, int* value) {
         return 0;
     }
 
-    result = sscanf_s(line, " %d %c", value, &extra);
+    result = sscanf_s(line, " %d %c", value, &extra, 1);
     return result == 1;
 }
 
 int read_line(const char* prompt, char* buffer, size_t buffer_size) {
-    size_t length;
+    char    raw[MAX_LINE_LEN];
+    wchar_t wbuf[MAX_LINE_LEN];
+    UINT    cp;
+    size_t  n;
+    int     wlen, ulen;
 
     printf("%s", prompt);
+    fflush(stdout);
+    buffer[0] = '\0';
 
-    if (!fgets(buffer, (int)buffer_size, stdin)) {
+    if (!fgets(raw, sizeof(raw), stdin))
         return 0;
+
+    n = strlen(raw);
+    while (n > 0 && (raw[n - 1] == '\n' || raw[n - 1] == '\r'))
+        raw[--n] = '\0';
+    if (n == 0)
+        return 1;
+
+    cp = GetConsoleCP();   
+
+    if (cp == CP_UTF8) {
+        
+        strncpy_s(buffer, buffer_size, raw, _TRUNCATE);
+        return 1;
     }
 
-    length = strlen(buffer);
+    wlen = MultiByteToWideChar(cp, 0, raw, -1,
+        wbuf, (int)(sizeof(wbuf) / sizeof(wbuf[0])));
+    if (wlen <= 0) return 0;
 
-    if (length > 0 && buffer[length - 1] == '\n') {
-        buffer[length - 1] = '\0';
-    }
-    else {
-        int ch;
-
-        while ((ch = getchar()) != '\n' && ch != EOF) {
-            /* Удаляем остаток слишком длинной строки. */
-        }
-    }
-
-    trim_newline(buffer);
-    return 1;
+    ulen = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1,
+        buffer, (int)buffer_size, NULL, NULL);
+    return ulen > 0;
 }
 
 void trim_newline(char* text) {
@@ -384,6 +397,7 @@ void search_item_by_name(
 
     if (!read_line("Введите название предмета: ",
         searched_name, sizeof(searched_name))) {
+        printf("[DBG] read_line failed\n");
         printf("Не удалось прочитать название.\n");
         return;
     }
