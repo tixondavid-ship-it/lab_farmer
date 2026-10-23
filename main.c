@@ -62,7 +62,8 @@ void write_diary(
 void summarize_deliveries(void);
 
 int main(void) {
-    setlocale(LC_ALL, ".UTF8");
+    
+    setlocale(LC_ALL, "");
 
     char farmer_name[MAX_FARMER_NAME_LEN];
     char item_names[MAX_ITEMS][MAX_NAME_LEN];
