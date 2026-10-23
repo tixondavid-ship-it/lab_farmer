@@ -448,3 +448,90 @@ void write_diary(
 
     printf("Запись добавлена в diary.txt.\n");
 }
+void summarize_deliveries(void) {
+    FILE* input = NULL;
+    FILE* output = NULL;
+
+    char names[MAX_ITEMS][MAX_NAME_LEN];
+    int totals[MAX_ITEMS] = { 0 };
+    int unique_count = 0;
+    char name[MAX_NAME_LEN];
+    int quantity;
+    int i;
+    int valid_records = 0;
+
+    if (fopen_s(&input, "input.txt", "r") != 0) {
+        input = NULL;
+    }
+
+    if (input == NULL) {
+        printf("Не удалось открыть input.txt. "
+            "Добавьте строки вида: Дерево 10\n");
+        return;
+    }
+
+    while (fscanf_s(input, "%63s %d",
+        name, (unsigned)sizeof(name), &quantity) == 2) {
+        if (quantity < 0) {
+            printf("Пропущена запись с отрицательным количеством: "
+                "%s %d\n", name, quantity);
+            continue;
+        }
+
+        for (i = 0; i < unique_count; i++) {
+            if (strcmp(names[i], name) == 0) {
+                break;
+            }
+        }
+
+        if (i == unique_count) {
+            if (unique_count >= MAX_ITEMS) {
+                printf("Слишком много разных ресурсов: максимум %d.\n",
+                    MAX_ITEMS);
+                fclose(input);
+                return;
+            }
+
+            snprintf(names[unique_count], MAX_NAME_LEN, "%s", name);
+            totals[unique_count] = 0;
+            unique_count++;
+        }
+
+        if (quantity > INT_MAX - totals[i]) {
+            printf("Сумма количества для ресурса %s слишком велика.\n",
+                name);
+            fclose(input);
+            return;
+        }
+
+        totals[i] += quantity;
+        valid_records++;
+    }
+
+    fclose(input);
+
+    if (valid_records == 0) {
+        printf("В input.txt нет корректных записей. "
+            "Используйте формат: Название Количество.\n");
+        return;
+    }
+
+    if (fopen_s(&output, "output.txt", "w") != 0) {
+        output = NULL;
+    }
+
+    if (output == NULL) {
+        printf("Не удалось открыть output.txt для записи.\n");
+        return;
+    }
+
+    printf("\n===== СВОДНАЯ ВЕДОМОСТЬ =====\n");
+
+    for (i = 0; i < unique_count; i++) {
+        printf("%s: %d шт.\n", names[i], totals[i]);
+        fprintf(output, "%s: %d шт.\n", names[i], totals[i]);
+    }
+
+    fclose(output);
+    printf("Ведомость записана в output.txt.\n");
+}
