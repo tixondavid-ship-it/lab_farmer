@@ -372,3 +372,79 @@ void review_resources(const int inventory[INVENTORY_SIZE]) {
         printf("Такой предмет не найден.\n");
     }
 }
+void search_item_by_name(
+    const int inventory[INVENTORY_SIZE],
+    const char item_names[MAX_ITEMS][MAX_NAME_LEN]
+) {
+    char searched_name[MAX_NAME_LEN];
+    int item_id = -1;
+    int count = 0;
+    int i;
+
+    if (!read_line("Введите название предмета: ",
+        searched_name, sizeof(searched_name))) {
+        printf("Не удалось прочитать название.\n");
+        return;
+    }
+
+    for (i = 0; i < MAX_ITEMS; i++) {
+        if (strcmp(searched_name, item_names[i]) == 0) {
+            item_id = i;
+            break;
+        }
+    }
+
+    if (item_id == -1) {
+        printf("Такого названия нет в каталоге.\n");
+        return;
+    }
+
+    printf("Предмет найден в слотах: ");
+
+    for (i = 0; i < INVENTORY_SIZE; i++) {
+        if (inventory[i] == item_id) {
+            printf("%d ", i);
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        printf("не найден");
+    }
+
+    printf("\n");
+}
+
+void write_diary(
+    const char* farmer_name,
+    int current_day,
+    int current_hour,
+    const int inventory[INVENTORY_SIZE],
+    const char item_names[MAX_ITEMS][MAX_NAME_LEN]
+) {
+    FILE* file = NULL;
+    int i;
+
+    if (fopen_s(&file, "diary.txt", "a") != 0) {
+        file = NULL;
+    }
+
+    if (file == NULL) {
+        printf("Не удалось открыть diary.txt для записи.\n");
+        return;
+    }
+
+    fprintf(file, "===== Дневник фермера =====\n");
+    fprintf(file, "Фермер: %s\n", farmer_name);
+    fprintf(file, "День: %d, время: %02d:00\n", current_day, current_hour);
+    fprintf(file, "Инвентарь:\n");
+
+    for (i = 0; i < INVENTORY_SIZE; i++) {
+        fprintf(file, "Слот %d: %s\n", i, item_names[inventory[i]]);
+    }
+
+    fprintf(file, "\n");
+    fclose(file);
+
+    printf("Запись добавлена в diary.txt.\n");
+}
