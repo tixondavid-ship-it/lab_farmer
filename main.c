@@ -1,4 +1,5 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
+#pragma execution_character_set("utf-8")
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
