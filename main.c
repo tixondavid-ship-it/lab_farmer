@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <time.h> 
+#include <time.h>
 
 #define INVENTORY_SIZE 10
 #define MAX_ITEMS 10
@@ -23,8 +23,12 @@
 #define CELL_ROCK           'R'
 #define CELL_CAMP           '^'
 #define CELL_HERO           '@'
-#define OBSTACLE_CHANCE     22           
+#define OBSTACLE_CHANCE     22          
 #define MIN_FREE_CELLS      2
+
+#define MOVE_BLOCKED 0
+#define MOVE_OK      1
+#define MOVE_EXIT    2
 
 static const char* DEFAULT_ITEM_NAMES[MAX_ITEMS] = {
     "Пусто", "Дерево", "Камень", "Семена", "Хлеб",
@@ -32,18 +36,20 @@ static const char* DEFAULT_ITEM_NAMES[MAX_ITEMS] = {
 };
 
 typedef struct {
-    char** grid;               
+    char** grid;
     int    width;
     int    height;
     int    hero_x, hero_y;
     int    camp_x, camp_y;
-    int    distance;          
+    int    distance;
 } ForestMap;
 
 ForestMap* forest_create(int distance);
 void       forest_free(ForestMap* map);
 void       forest_draw(const ForestMap* map);
 void       forest_place_hero_at(ForestMap* map, int px, int py);
+int        forest_move(ForestMap* map, int dx, int dy); 
+int        forest_at_camp(const ForestMap* map);        
 void       adventure_run(const char* farmer_name);
 
 int  read_int(const char* prompt, int* value);
@@ -52,25 +58,19 @@ void trim_newline(char* text);
 void load_item_names(char item_names[MAX_ITEMS][MAX_NAME_LEN]);
 void copy_default_item_names(char item_names[MAX_ITEMS][MAX_NAME_LEN]);
 void print_menu(const char* farmer_name);
-void print_inventory(const int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
+void print_inventory(const int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
 void show_time(int current_day, int current_hour);
 void work(int* current_day, int* current_hour);
-void put_item(int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
+void put_item(int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
 void discard_item(int inventory[INVENTORY_SIZE]);
 void review_resources(const int inventory[INVENTORY_SIZE]);
-void search_item_by_name(const int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
-void write_diary(const char* farmer_name, int current_day, int current_hour,
-    const int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
+void search_item_by_name(const int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
+void write_diary(const char* farmer_name, int current_day, int current_hour, const int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]);
 void summarize_deliveries(void);
 
 int main(void) {
     SetConsoleOutputCP(CP_UTF8);
-
-    srand((unsigned)time(NULL)); 
+    srand((unsigned)time(NULL));
 
     char farmer_name[MAX_FARMER_NAME_LEN];
     char item_names[MAX_ITEMS][MAX_NAME_LEN];
@@ -81,8 +81,7 @@ int main(void) {
     int action;
 
     printf("Введите имя фермера: ");
-    if (!read_line("", farmer_name, sizeof(farmer_name)) ||
-        farmer_name[0] == '\0') {
+    if (!read_line("", farmer_name, sizeof(farmer_name)) || farmer_name[0] == '\0') {
         strcpy_s(farmer_name, sizeof(farmer_name), "Фермер");
     }
 
@@ -107,15 +106,10 @@ int main(void) {
         case 6: review_resources(inventory);          break;
         case 7: search_item_by_name(inventory, item_names); break;
         case 8:
-            write_diary(farmer_name, current_day, current_hour,
-                inventory, item_names);
+            write_diary(farmer_name, current_day, current_hour, inventory, item_names);
             break;
         case 9: summarize_deliveries(); break;
-
-        case 10: 
-            adventure_run(farmer_name);
-            break;
-
+        case 10: adventure_run(farmer_name); break;
         default:
             printf("Выберите пункт от 0 до 10.\n");
             break;
@@ -161,19 +155,16 @@ int read_line(const char* prompt, char* buffer, size_t buffer_size) {
         return 1;
     }
 
-    wlen = MultiByteToWideChar(cp, 0, raw, -1,
-        wbuf, (int)(sizeof(wbuf) / sizeof(wbuf[0])));
+    wlen = MultiByteToWideChar(cp, 0, raw, -1, wbuf, (int)(sizeof(wbuf) / sizeof(wbuf[0])));
     if (wlen <= 0) return 0;
 
-    ulen = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1,
-        buffer, (int)buffer_size, NULL, NULL);
+    ulen = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, buffer, (int)buffer_size, NULL, NULL);
     return ulen > 0;
 }
 
 void trim_newline(char* text) {
     size_t length = strlen(text);
-    while (length > 0 &&
-        (text[length - 1] == '\n' || text[length - 1] == '\r')) {
+    while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r')) {
         text[--length] = '\0';
     }
 }
@@ -194,13 +185,11 @@ void load_item_names(char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
 
     if (fopen_s(&file, "items.txt", "r") != 0) file = NULL;
     if (file == NULL) {
-        printf("Предупреждение: items.txt не найден. "
-            "Используются стандартные названия.\n");
+        printf("Предупреждение: items.txt не найден. Используются стандартные названия.\n");
         return;
     }
 
-    while (fscanf_s(file, "%d %63s",
-        &id, name, (unsigned)sizeof(name)) == 2) {
+    while (fscanf_s(file, "%d %63s", &id, name, (unsigned)sizeof(name)) == 2) {
         if (id >= MIN_ITEM_ID && id <= MAX_ITEM_ID) {
             snprintf(item_names[id], MAX_NAME_LEN, "%s", name);
             loaded_count++;
@@ -235,16 +224,13 @@ void show_time(int current_day, int current_hour) {
 void work(int* current_day, int* current_hour) {
     int hours;
     if (!read_int("Сколько часов работать? ", &hours)) {
-        printf("Введите целое число.\n");
-        return;
+        printf("Введите целое число.\n"); return;
     }
     if (hours < 0) {
-        printf("Количество часов не может быть отрицательным.\n");
-        return;
+        printf("Количество часов не может быть отрицательным.\n"); return;
     }
     if (hours > INT_MAX - *current_hour) {
-        printf("Слишком большое количество часов.\n");
-        return;
+        printf("Слишком большое количество часов.\n"); return;
     }
     *current_hour += hours;
     *current_day += *current_hour / 24;
@@ -252,20 +238,16 @@ void work(int* current_day, int* current_hour) {
     show_time(*current_day, *current_hour);
 }
 
-void print_inventory(const int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
+void print_inventory(const int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
     int i;
     printf("\n===== ИНВЕНТАРЬ =====\n");
     for (i = 0; i < INVENTORY_SIZE; i++) {
-        printf("Слот %d: [%d] - %s\n",
-            i, inventory[i], item_names[inventory[i]]);
+        printf("Слот %d: [%d] - %s\n", i, inventory[i], item_names[inventory[i]]);
     }
 }
 
-void put_item(int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
+void put_item(int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
     int slot, item_id;
-
     if (!read_int("Введите индекс слота от 0 до 9: ", &slot)) {
         printf("Некорректный номер слота.\n"); return;
     }
@@ -310,13 +292,11 @@ void review_resources(const int inventory[INVENTORY_SIZE]) {
     if (count == 0) printf("Такой предмет не найден.\n");
 }
 
-void search_item_by_name(const int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
+void search_item_by_name(const int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
     char searched_name[MAX_NAME_LEN];
     int  item_id = -1, count = 0, i;
 
-    if (!read_line("Введите название предмета: ",
-        searched_name, sizeof(searched_name))) {
+    if (!read_line("Введите название предмета: ", searched_name, sizeof(searched_name))) {
         printf("Не удалось прочитать название.\n"); return;
     }
 
@@ -337,9 +317,7 @@ void search_item_by_name(const int inventory[INVENTORY_SIZE],
     printf("\n");
 }
 
-void write_diary(const char* farmer_name, int current_day, int current_hour,
-    const int inventory[INVENTORY_SIZE],
-    const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
+void write_diary(const char* farmer_name, int current_day, int current_hour, const int inventory[INVENTORY_SIZE], const char item_names[MAX_ITEMS][MAX_NAME_LEN]) {
     FILE* file = NULL;
     int i;
 
@@ -369,22 +347,18 @@ void summarize_deliveries(void) {
 
     if (fopen_s(&input, "input.txt", "r") != 0) input = NULL;
     if (input == NULL) {
-        printf("Не удалось открыть input.txt. "
-            "Добавьте строки вида: Дерево 10\n"); return;
+        printf("Не удалось открыть input.txt.\n"); return;
     }
-    while (fscanf_s(input, "%63s %d",
-        name, (unsigned)sizeof(name), &quantity) == 2) {
+    while (fscanf_s(input, "%63s %d", name, (unsigned)sizeof(name), &quantity) == 2) {
         if (quantity < 0) {
-            printf("Пропущена запись с отрицательным количеством: %s %d\n",
-                name, quantity);
+            printf("Пропущена запись с отрицательным количеством: %s %d\n", name, quantity);
             continue;
         }
         for (i = 0; i < unique_count; i++)
             if (strcmp(names[i], name) == 0) break;
         if (i == unique_count) {
             if (unique_count >= MAX_ITEMS) {
-                printf("Слишком много разных ресурсов: максимум %d.\n",
-                    MAX_ITEMS);
+                printf("Слишком много разных ресурсов.\n");
                 fclose(input); return;
             }
             snprintf(names[unique_count], MAX_NAME_LEN, "%s", name);
@@ -406,7 +380,7 @@ void summarize_deliveries(void) {
 
     if (fopen_s(&output, "output.txt", "w") != 0) output = NULL;
     if (output == NULL) {
-        printf("Не удалось открыть output.txt для записи.\n"); return;
+        printf("Не удалось открыть output.txt.\n"); return;
     }
 
     printf("\n===== СВОДНАЯ ВЕДОМОСТЬ =====\n");
@@ -517,14 +491,34 @@ void forest_place_hero_at(ForestMap* map, int px, int py) {
     int best_d = INT_MAX, bx = -1, by = -1, x, y;
     for (y = 0; y < map->height; y++) {
         for (x = 0; x < map->width; x++) {
-            if (map->grid[y][x] == CELL_EMPTY ||
-                map->grid[y][x] == CELL_CAMP) {
+            if (map->grid[y][x] == CELL_EMPTY || map->grid[y][x] == CELL_CAMP) {
                 int d = abs(x - px) + abs(y - py);
                 if (d < best_d) { best_d = d; bx = x; by = y; }
             }
         }
     }
     if (bx >= 0) { map->hero_x = bx; map->hero_y = by; }
+}
+
+int forest_move(ForestMap* map, int dx, int dy) {
+    int nx = map->hero_x + dx;
+    int ny = map->hero_y + dy;
+    char c;
+
+    if (nx < 0 || nx >= map->width || ny < 0 || ny >= map->height)
+        return MOVE_EXIT;
+
+    c = map->grid[ny][nx];
+    if (c == CELL_TREE || c == CELL_ROCK)
+        return MOVE_BLOCKED;
+
+    map->hero_x = nx;
+    map->hero_y = ny;
+    return MOVE_OK;
+}
+
+int forest_at_camp(const ForestMap* map) {
+    return map->hero_x == map->camp_x && map->hero_y == map->camp_y;
 }
 
 void adventure_run(const char* farmer_name) {
@@ -541,25 +535,76 @@ void adventure_run(const char* farmer_name) {
     }
 
     printf("\n=== ПРИКЛЮЧЕНИЕ НАЧАЛОСЬ ===\n");
-    printf("Управление: Q - выйти, M - в меню.\n");
+    printf("Управление: W/A/S/D - шаг, Q - домой (только на костре), M - меню\n");
 
     while (running) {
         char cmd;
-        int k = 0;
+        int  k, dx = 0, dy = 0, move_attempt = 0, result;
 
         forest_draw(map);
-        printf("\nДальность от дома: %d. Действие: ", map->distance);
+        printf("\nДальность от дома: %d. ", map->distance);
+        if (forest_at_camp(map)) printf("[ВЫ НА КОСТРЕ!] ");
+        printf("\nДействие: ");
         fflush(stdout);
 
         if (!fgets(line, sizeof(line), stdin)) break;
+        k = 0;
         while (line[k] == ' ' || line[k] == '\t') k++;
         cmd = line[k];
+        if (cmd == '\0' || cmd == '\n' || cmd == '\r') continue;
 
-        if (cmd == 'q' || cmd == 'Q' || cmd == 'm' || cmd == 'M') {
+        switch (cmd) {
+        case 'w': case 'W': dx = 0;  dy = -1; move_attempt = 1; break;
+        case 'a': case 'A': dx = -1; dy = 0;  move_attempt = 1; break;
+        case 's': case 'S': dx = 0;  dy = 1;  move_attempt = 1; break;
+        case 'd': case 'D': dx = 1;  dy = 0;  move_attempt = 1; break;
+
+        case 'q': case 'Q':
+            if (forest_at_camp(map)) {
+                printf("Вы возвращаетесь домой.\n");
+                running = 0;
+            }
+            else {
+                printf("Вернуться домой можно только стоя на костре '^'.\n");
+            }
+            break;
+
+        case 'm': case 'M':
+            printf("Вы покидаете приключение и возвращаетесь в меню.\n");
             running = 0;
+            break;
+
+        default:
+            printf("Неправильный ввод.\n");
+            break;
         }
-        else {
-            printf("Пока доступны только Q (выход) и M (меню).\n");
+
+        if (!move_attempt) continue;
+
+        result = forest_move(map, dx, dy);
+
+        if (result == MOVE_BLOCKED) {
+            printf("Препятствие.\n");
+        }
+        else if (result == MOVE_EXIT) {
+            int old_x = map->hero_x;
+            int old_y = map->hero_y;
+            int new_dist = map->distance + 1;
+
+            forest_free(map);
+
+            map = forest_create(new_dist);
+            if (!map) {
+                printf("Ошибка: не удалось создать новую карту!\n");
+                return;
+            }
+
+            if (dx > 0)       forest_place_hero_at(map, 0, old_y);
+            else if (dx < 0)  forest_place_hero_at(map, map->width - 1, old_y);
+            else if (dy > 0)  forest_place_hero_at(map, old_x, 0);
+            else if (dy < 0)  forest_place_hero_at(map, old_x, map->height - 1);
+
+            printf("Вы ушли дальше от дома. Дальность: %d.\n", map->distance);
         }
     }
 
