@@ -23,8 +23,14 @@
 #define CELL_ROCK           'R'
 #define CELL_CAMP           '^'
 #define CELL_HERO           '@'
-#define OBSTACLE_CHANCE     22          
+#define CELL_UNKNOWN        '?'  
+#define OBSTACLE_CHANCE     22
 #define MIN_FREE_CELLS      2
+
+#define REVEAL_RADIUS_MIN   5
+#define REVEAL_RADIUS_MAX   7
+#define REVEAL_STEPS        3
+
 
 #define MOVE_BLOCKED 0
 #define MOVE_OK      1
@@ -36,21 +42,26 @@ static const char* DEFAULT_ITEM_NAMES[MAX_ITEMS] = {
 };
 
 typedef struct {
-    char** grid;
+    char** grid;               
+    char** revealed;           
     int    width;
     int    height;
     int    hero_x, hero_y;
     int    camp_x, camp_y;
     int    distance;
+    int    is_night;           
+    int    reveal_steps_left;  
+    int    reveal_radius;      
 } ForestMap;
 
-ForestMap* forest_create(int distance);
+ForestMap* forest_create(int distance, int is_night);
 void       forest_free(ForestMap* map);
 void       forest_draw(const ForestMap* map);
 void       forest_place_hero_at(ForestMap* map, int px, int py);
-int        forest_move(ForestMap* map, int dx, int dy); 
-int        forest_at_camp(const ForestMap* map);        
-void       adventure_run(const char* farmer_name);
+int        forest_move(ForestMap* map, int dx, int dy);
+int        forest_at_camp(const ForestMap* map);
+void       forest_shout(ForestMap* map);
+void       adventure_run(const char* farmer_name, int is_night);
 
 int  read_int(const char* prompt, int* value);
 int  read_line(const char* prompt, char* buffer, size_t buffer_size);
@@ -109,7 +120,17 @@ int main(void) {
             write_diary(farmer_name, current_day, current_hour, inventory, item_names);
             break;
         case 9: summarize_deliveries(); break;
-        case 10: adventure_run(farmer_name); break;
+
+        case 10: {
+            int mode = 1;
+            if (!read_int("Какой лес? [1] Дневной [2] Ночной: ", &mode) || (mode != 1 && mode != 2)) {
+                printf("Выбран дневной лес по умолчанию.\n");
+                mode = 1;
+            }
+            adventure_run(farmer_name, mode == 2 ? 1 : 0);
+            break;
+        }
+
         default:
             printf("Выберите пункт от 0 до 10.\n");
             break;
@@ -399,7 +420,7 @@ static void free_grid(char** grid, int rows) {
     free(grid);
 }
 
-ForestMap* forest_create(int distance) {
+ForestMap* forest_create(int distance, int is_night) {
     int i, j, empty_count;
     ForestMap* m = (ForestMap*)malloc(sizeof(ForestMap));
     if (!m) return NULL;
@@ -408,14 +429,25 @@ ForestMap* forest_create(int distance) {
     m->width = MAP_MIN_SIZE + rand() % (MAP_MAX_SIZE - MAP_MIN_SIZE + 1);
     m->height = MAP_MIN_SIZE + rand() % (MAP_MAX_SIZE - MAP_MIN_SIZE + 1);
     m->distance = distance;
+    m->is_night = is_night;
+    m->reveal_steps_left = 0;
+    m->reveal_radius = REVEAL_RADIUS_MIN + rand() % (REVEAL_RADIUS_MAX - REVEAL_RADIUS_MIN + 1);
 
     m->grid = (char**)calloc((size_t)m->height, sizeof(char*));
-    if (!m->grid) { free(m); return NULL; }
+    m->revealed = (char**)calloc((size_t)m->height, sizeof(char*));
+    if (!m->grid || !m->revealed) {
+        free_grid(m->grid, m->height);
+        free_grid(m->revealed, m->height);
+        free(m);
+        return NULL;
+    }
 
     for (i = 0; i < m->height; i++) {
         m->grid[i] = (char*)malloc((size_t)m->width * sizeof(char));
-        if (!m->grid[i]) {
+        m->revealed[i] = (char*)calloc((size_t)m->width, sizeof(char));
+        if (!m->grid[i] || !m->revealed[i]) {
             free_grid(m->grid, m->height);
+            free_grid(m->revealed, m->height);
             free(m);
             return NULL;
         }
@@ -463,6 +495,7 @@ ForestMap* forest_create(int distance) {
 void forest_free(ForestMap* map) {
     if (!map) return;
     free_grid(map->grid, map->height);
+    free_grid(map->revealed, map->height); 
     free(map);
 }
 
@@ -475,8 +508,16 @@ void forest_draw(const ForestMap* map) {
     for (i = 0; i < map->height; i++) {
         printf("|");
         for (j = 0; j < map->width; j++) {
-            char c = map->grid[i][j];
-            if (i == map->hero_y && j == map->hero_x) c = CELL_HERO;
+            char c;
+            if (i == map->hero_y && j == map->hero_x) {
+                c = CELL_HERO;
+            }
+            else if (map->is_night && !map->revealed[i][j] && map->grid[i][j] != CELL_CAMP) {
+                c = CELL_UNKNOWN; 
+            }
+            else {
+                c = map->grid[i][j];
+            }
             putchar(c);
         }
         printf("|\n");
@@ -521,28 +562,57 @@ int forest_at_camp(const ForestMap* map) {
     return map->hero_x == map->camp_x && map->hero_y == map->camp_y;
 }
 
-void adventure_run(const char* farmer_name) {
+void forest_shout(ForestMap* map) {
+    int i, j, r;
+    if (!map->is_night) {
+        printf("Днём кричать бессмысленно.\n");
+        return;
+    }
+    r = map->reveal_radius;
+    for (i = -r; i <= r; i++) {
+        for (j = -r; j <= r; j++) {
+            int y, x;
+            if (i * i + j * j > r * r) continue; 
+            y = map->hero_y + i;
+            x = map->hero_x + j;
+            if (y >= 0 && y < map->height && x >= 0 && x < map->width)
+                map->revealed[y][x] = 1;
+        }
+    }
+    map->reveal_steps_left = REVEAL_STEPS;
+    printf("Вы кричите! Окрестности озаряются на %d шагов.\n", REVEAL_STEPS);
+}
+
+void adventure_run(const char* farmer_name, int is_night) {
     ForestMap* map;
     int running = 1;
     char line[MAX_LINE_LEN];
 
     (void)farmer_name;
 
-    map = forest_create(0);
+    map = forest_create(0, is_night);
     if (!map) {
         printf("Не удалось создать карту (нет памяти).\n");
         return;
     }
 
     printf("\n=== ПРИКЛЮЧЕНИЕ НАЧАЛОСЬ ===\n");
-    printf("Управление: W/A/S/D - шаг, Q - домой (только на костре), M - меню\n");
+    printf("Управление: W/A/S/D - шаг, R - крик (ночь), Q - домой (только на костре), H - быстро домой\n");
+    if (is_night)
+        printf("Вокруг ночной лес. Нажмите R, чтобы осветить округу.\n");
 
     while (running) {
         char cmd;
         int  k, dx = 0, dy = 0, move_attempt = 0, result;
 
         forest_draw(map);
+
         printf("\nДальность от дома: %d. ", map->distance);
+        if (map->is_night) {
+            printf("[НОЧЬ] ");
+            if (map->reveal_steps_left > 0)
+                printf("(видно ещё %d шагов) ", map->reveal_steps_left);
+        }
         if (forest_at_camp(map)) printf("[ВЫ НА КОСТРЕ!] ");
         printf("\nДействие: ");
         fflush(stdout);
@@ -559,6 +629,10 @@ void adventure_run(const char* farmer_name) {
         case 's': case 'S': dx = 0;  dy = 1;  move_attempt = 1; break;
         case 'd': case 'D': dx = 1;  dy = 0;  move_attempt = 1; break;
 
+        case 'r': case 'R':
+            forest_shout(map);
+            break;
+
         case 'q': case 'Q':
             if (forest_at_camp(map)) {
                 printf("Вы возвращаетесь домой.\n");
@@ -569,13 +643,13 @@ void adventure_run(const char* farmer_name) {
             }
             break;
 
-        case 'm': case 'M':
-            printf("Вы покидаете приключение и возвращаетесь в меню.\n");
+        case 'h': case 'H':
+            printf("Вы быстро возвращаетесь домой.\n");
             running = 0;
             break;
 
         default:
-            printf("Неправильный ввод.\n");
+            printf("Неизвестная команда.\n");
             break;
         }
 
@@ -584,16 +658,27 @@ void adventure_run(const char* farmer_name) {
         result = forest_move(map, dx, dy);
 
         if (result == MOVE_BLOCKED) {
-            printf("Препятствие.\n");
+            printf("Туда пройти нельзя — препятствие.\n");
+        }
+        else if (result == MOVE_OK) {
+            if (map->is_night && map->reveal_steps_left > 0) {
+                int i;
+                map->reveal_steps_left--;
+                if (map->reveal_steps_left == 0) {
+                    for (i = 0; i < map->height; i++)
+                        memset(map->revealed[i], 0, (size_t)map->width);
+                    printf("Темнота снова сгущается...\n");
+                }
+            }
         }
         else if (result == MOVE_EXIT) {
             int old_x = map->hero_x;
             int old_y = map->hero_y;
             int new_dist = map->distance + 1;
+            int night = map->is_night;
 
             forest_free(map);
-
-            map = forest_create(new_dist);
+            map = forest_create(new_dist, night);
             if (!map) {
                 printf("Ошибка: не удалось создать новую карту!\n");
                 return;
@@ -605,8 +690,10 @@ void adventure_run(const char* farmer_name) {
             else if (dy < 0)  forest_place_hero_at(map, old_x, map->height - 1);
 
             printf("Вы ушли дальше от дома. Дальность: %d.\n", map->distance);
+            if (map->is_night)
+                printf("Вокруг ночной лес. Нажмите R, чтобы осветить округу.\n");
         }
-    }
+    } 
 
     forest_free(map);
-}
+} 
